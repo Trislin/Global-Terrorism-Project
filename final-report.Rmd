@@ -1,0 +1,205 @@
+---
+title: "Global Terrorism"
+author: "Weijia Zhang, Yuanzhu Li, Yijing Lin"
+date: "12/3/2018"
+output: github_document
+---
+Global Terrorism Dataset  
+
+
+leaflet package or shiny plot 
+#Context
+The Global Terrorism Database (GTD) is an open-source database including information on terrorism around the world from 1970 through 2017 (with annual updates planned for the future). Unlike many other event databases, the GTD includes systematic data on domestic as well as international terrorist incidents that have occurred during this time period and now includes more than 180,000 cases.
+
+#Goals:
+We are going to use the global terrorism dataset to visualize the occurrence of terrorism across the globe from 1970 to 2017. In particular, we aim to show:
+1)frequency of terrorism in 2017 across the globe  - world map 
+2)Pick 5-8 countries of interest, explore the changes across the time span 
+3)what the distribution of different attack types (such as suicide, bombing) is. 
+4)What the distribution of number of wounded is for each attack type／What the distribution of the use of different attack types based on different terrorist groups is 
+5)explore the correlation between attack type and number of killed
+
+
+
+#Content
+Geography: Worldwide
+Time period: 1970-2017, except 1993
+Unit of analysis: Attack
+Variables: >100 variables on location, tactics, perpetrators, targets, and outcomes
+Sources: Unclassified media articles (Note: Please interpret changes over time with caution. Global patterns are driven by diverse trends in particular regions, and data collection is influenced by fluctuations in access to media coverage over both time and place.)
+ 
+#Data(variables):
+Iyear: This field contains the year in which the incident occurred.
+Country_txt: This field identifies the country or location where the incident occurred
+Region_txt: This field identifies the region in which the incident occurred.
+City: Name of the city, village, or town in which the incident occurred
+Success: Success of a terrorist strike
+Suicide: 1 = "Yes" The incident was a suicide attack. 0 = "No" There is no indication that the incident was a suicide attack.
+Targsubtype1_txt: The more specific target category
+Nperps: The total number of terrorists participating in the incident
+Nwound: Number of confirmed non-fatal injuries to both perpetrators and victims.
+Attacktype: types of attacks
+Gname: name of the terrorist group (potentially be coded based on ideology)
+ 
+Website:https://www.kaggle.com/START-UMD/gtd
+
+Data: Global Terrorism Dataset  
+```{r package intallation}
+
+
+```
+
+```{r data cleaning}
+globalterro<-read.csv('data/415Project.csv')
+library(tidyverse)
+problems(globalterro)
+globalterro <- globalterro%>%select(iyear,imonth,country_txt, region_txt, city, nkill, latitude, longitude, attacktype1_txt, success, nperps,  gname )%>%filter(!is.na(iyear), !is.na(country_txt),!is.na(nkill))#clean data before each section below too
+colnames(globalterro)[colnames(globalterro)=="country_txt"]<-'country'
+colnames(globalterro)[colnames(globalterro)=="iyear"]<-'year'
+colnames(globalterro)[colnames(globalterro)=="attacktype1_txt"]<-'attack_type'
+```
+
+
+
+
+
+
+
+
+
+```{r q2}
+#HPick 5-8 countries of interest, explore the changes across the time span 
+
+#number of incidents
+Num_I_world<-globalterro%>%group_by(year)%>%mutate(world = n())%>%ggplot(aes(year,world))+geom_line()+geom_point(shape=23)+labs(x='year',y='terrorist attacks')+theme_bw()
+Num_I_world
+Num_incident5<-globalterro%>%filter(year>= 1991, country=='Syria'|country=='Iraq'|country== 'Afghanistan'|country== 'United States'|country=='United Kingdom'|country=='Yemen')
+#Num_incident5
+
+Num_incident5%>%group_by(country,year)%>%summarise(terrorist_attacks=n())%>%ggplot(aes(year,terrorist_attacks, color = country))+geom_line()+geom_point()+theme_bw()#the plot shows the number of terrorism incidents occured in the five countries from 1970 to 2017
+
+Num_incident_isr_pal<-globalterro%>%filter(country=='Israel'|country=='West Bank and Gaza Strip')
+Num_incident_isr_pal%>%group_by(country,year)%>%summarise(terrorist_attacks=n())%>%ggplot(aes(year,terrorist_attacks, color = country))+geom_line()+geom_point()+theme_bw()
+
+
+gt_incidentworldrank<-globalterro%>%group_by(country)%>%summarize(number_of_incidents=n(),deaths=sum(nkill))%>%arrange(desc(number_of_incidents))
+#gt_incidentworldrank
+
+gt_incidentworldrank_before2003<-globalterro%>%filter(year<2003)%>%group_by(country)%>%summarize(number_of_incidents=n(),deaths=sum(nkill))%>%arrange(desc(number_of_incidents))
+#gt_incidentworldrank_before2003
+gt_incidentworldrank_after2003<-globalterro%>%filter(year>=2003)%>%group_by(country)%>%summarize(number_of_incidents=n(),deaths=sum(nkill))%>%arrange(desc(number_of_incidents))
+
+
+
+gt_incidents_top4<-globalterro%>%filter(country=='Iraq'|country=='Pakistan'|country=='Afghanistan'|country=='India')%>%group_by(country,year)%>%summarise(number_of_incidents=n())
+#gt_incidents_top4
+gt_incidents_top4%>%ggplot(aes(year,number_of_incidents, color = country))+geom_line()+geom_point()+theme_bw()
+
+gt_incidents_top3_after2003<-globalterro%>%filter(year>=2003,country=='Iraq'|country=='Pakistan'|country=='Afghanistan')%>%group_by(country)%>%summarize(terrorist_attack_after2003=n())
+#gt_incidents_top3_after2003
+
+gt_incidents_top3_before2003<-globalterro%>%filter(year<2003,country=='Iraq'|country=='Pakistan'|country=='Afghanistan')%>%group_by(country)%>%summarize(terrorist_attack_before2003=n())
+#gt_incidents_top3_before2003
+
+gt_incidents_top3_comparison<-full_join(gt_incidents_top3_after2003, gt_incidents_top3_before2003, by = "country")
+gt_incidents_top3_comparison
+
+#number of fatalities 
+gt_countries<-globalterro%>%filter(year>= 1991, country=='Syria'|country=='Iraq'|country== 'Afghanistan'|country== 'United States'|country=='United Kingdom'|country=='Yemen')%>%group_by(country, year)%>%summarize(fatalities=sum(nkill))
+#gt_countries
+gt_countries%>%ggplot(aes(year, fatalities, color=country))+geom_point()+geom_line()+theme_bw()#the plot shows the fatalities rates resulted from terrorism in six countries from 1970 to 2017
+
+gt_911<-globalterro%>%filter(country=='Iraq'|country== 'Afghanistan'|country== 'United States')%>%group_by(country, year)%>%summarize(fatalities=sum(nkill))
+gt_911%>%ggplot(aes(year, fatalities, color=country))+geom_point()+geom_line()+theme_bw()
+
+gt_isr_pal<-globalterro%>%filter(country=='Israel'|country=='West Bank and Gaza Strip')%>%group_by(country, year)%>%summarize(fatalities=sum(nkill))
+gt_isr_pal%>%ggplot(aes(year, fatalities, color=country))+geom_point()+geom_line()+labs(x='year')+theme_bw()
+gt_fatalities_worldrank<-globalterro%>%group_by(country)%>%summarize(fatalities=sum(nkill))%>%arrange(desc(fatalities))
+head(gt_fatalities_worldrank)#the table that contains the rank of countries based on the fatalities rates resulted from terrorism since 1970 to 2017
+
+
+
+```
+
+
+```{r q3 attack types}
+number_of_fatalities<-sum(globalterro$nkill)
+gt_attacktypes<-globalterro%>%filter(attack_type!='unknown')%>%group_by(attack_type)%>%summarize(fatalities=sum(nkill), rates=fatalities/number_of_fatalities,incidents=n())%>%arrange(desc(fatalities))
+gt_attacktypes
+gt_attacktypes%>%ggplot()+geom_bar(aes(x=rates,fill=attack_type))+coord_polar()+theme_bw()
+
+#6 countries
+number_of_fatalities_per_country<-globalterro%>%filter(country=='Iraq'|country== 'United States')%>%group_by(country,attack_type)%>%group_by(country)%>%summarize(fatalities=median(nkill))
+number_of_fatalities_per_country
+med_attack<-globalterro%>%group_by(attack_type)%>%summarize(avg=mean(nkill))
+med_attack
+gt_attacktypes_6countries<-globalterro%>%filter(country=='Iraq'|country== 'Afghanistan'|country== 'United States'|country=='France'|country=='Syria'|country=='Israel')%>%group_by(country,attack_type) #rates?
+gt_attacktypes_6countries%>%ggplot()+geom_bar(aes(attack_type, fill=country),position='dodge')+theme_bw()
+
+```
+
+```{r q4 before and after 911 analysis }
+globalterro911<-globalterro%>%mutate(idate=year*100+imonth)
+#globalterro911
+toptenc<-globalterro911%>%mutate(count_total=n())%>%group_by(country)%>%summarise(count=n())%>%arrange(desc(count))%>%head(10)
+before911<- globalterro911%>%filter(idate <200109)%>%group_by(country)%>%summarise(cot_bf911=n())%>%arrange(desc(cot_bf911))
+before911<-left_join(before911,toptenc,by="country")%>%mutate(num = count-cot_bf911)%>%mutate(before = cot_bf911/count)
+#before911
+
+after911<-globalterro911%>%filter(idate>=200109)%>%group_by(country)%>%summarise(cot_ps911=n())%>%arrange(desc(cot_ps911))
+after911<-left_join(after911,toptenc,by = "country")%>%mutate(num = count-cot_ps911)%>%mutate(post = cot_ps911/count)
+#after911
+```
+
+
+
+
+```{r 911}
+
+toptenc<-globalterro911%>%mutate(count_total=n())%>%group_by(country)%>%summarise(count=n())%>%arrange(desc(count))%>%head(10)
+
+globalterro911<-globalterro%>%mutate(idate=year*100+imonth)
+#globalterro911
+before911<- globalterro911%>%filter(idate <200109)%>%group_by(country)%>%summarise(cot_bf911=n())%>%arrange(desc(cot_bf911))
+before911<-left_join(before911,toptenc,by="country")%>%mutate(num = count-cot_bf911)%>%mutate(before = cot_bf911/count)
+before911topten <- before911%>% head(10)
+before911topten 
+after911<-globalterro911%>%filter(idate>=200109)%>%group_by(country)%>%summarise(cot_ps911=n())%>%arrange(desc(cot_ps911))
+after911<-left_join(after911,toptenc,by = "country")%>%mutate(num = count-cot_ps911)%>%mutate(post = cot_ps911/count)
+after911topeten <- after911%>% head(10)
+after911topeten
+compare <- before911topten %>%
+   mutate(country_after = after911topeten$country)%>%mutate(count_post911 = after911topeten$cot_ps911)%>%mutate(total_count = after911topeten$count)%>%mutate(num_post = after911topeten$num)%>%mutate(post = after911topeten$post)
+colnames(compare)[colnames(compare)=="country_after"]<-'country'
+colnames(compare)[colnames(compare)=="cot_bf911"]<-'count_before'
+colnames(compare)[colnames(compare)=="count_post911"] <- 'count_after'
+colnames(compare)[colnames(compare)=="count"] <- 'total_count'
+colnames(compare)[colnames(compare)=="before"] <- 'before_percentage'
+colnames(compare)[colnames(compare)=="post"] <- 'after_percentage'
+colnames(compare)[colnames(compare)=="num"] <- 'num_before'
+library(knitr)
+kable(compare)
+```
+
+
+```{r tmap}
+library(tmap)
+data("World")
+
+combined1<-left_join(x=World,y=toptenc,by = c("name"="country"))
+tm_shape(combined1)+tm_polygons("count", breaks = c(0,50,100,250,500,1000,2500))
+
+combine_bf911 <- left_join(x=World, y=before911, by = c("name" = "country"))
+tm_shape(combine_bf911)+tm_polygons("cot_bf911", breaks = c(0,50,100,250,500,1000,2500))
+
+combine_af911 <- left_join(x=World, y=after911, by = c("name" = "country"))
+tm_shape(combine_af911)+tm_polygons("cot_ps911", breaks = c(0,50,100,250,500,1000,2500))
+
+
+
+
+
+```
+
+
+
